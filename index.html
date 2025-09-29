@@ -1,495 +1,212 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Água - Hidrate-se</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+import React, { useState, useEffect } from 'react';
+import { Droplets, Plus, Target, Calendar, Award } from 'lucide-react';
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+const WaterTrackerApp = () => {
+  const [dailyGoal, setDailyGoal] = useState(2000);
+  const [consumed, setConsumed] = useState(0);
+  const [entries, setEntries] = useState([]);
+  const [customAmount, setCustomAmount] = useState('');
+  const [streak, setStreak] = useState(0);
 
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-        }
+  const addWater = (amount) => {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    setConsumed(prev => prev + amount);
+    setEntries(prev => [...prev, { 
+      amount, 
+      time: timeString, 
+      id: Date.now() 
+    }]);
+    setCustomAmount('');
+  };
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+  const removeEntry = (id) => {
+    const entry = entries.find(e => e.id === id);
+    if (entry) {
+      setConsumed(prev => prev - entry.amount);
+      setEntries(prev => prev.filter(e => e.id !== id));
+    }
+  };
 
-        .header h1 {
-            color: #1e40af;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
+  const progressPercentage = Math.min((consumed / dailyGoal) * 100, 100);
+  const isGoalReached = consumed >= dailyGoal;
 
-        .header p {
-            color: #64748b;
-            font-size: 1.1rem;
-        }
+  const getMotivationalMessage = () => {
+    if (isGoalReached) return "🎉 Parabéns! Meta diária alcançada!";
+    if (progressPercentage >= 75) return "🌟 Quase lá! Falta pouco para sua meta!";
+    if (progressPercentage >= 50) return "💪 Você está no meio do caminho!";
+    if (progressPercentage >= 25) return "🚀 Bom começo! Continue assim!";
+    return "💧 Hora de se hidratar! Comece agora!";
+  };
 
-        .card {
-            background: white;
-            border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .progress-circle {
-            position: relative;
-            width: 160px;
-            height: 160px;
-            margin: 0 auto 20px;
-        }
-
-        .progress-ring {
-            transform: rotate(-90deg);
-        }
-
-        .progress-ring-bg {
-            fill: none;
-            stroke: #e5e7eb;
-            stroke-width: 8;
-        }
-
-        .progress-ring-fill {
-            fill: none;
-            stroke: #3b82f6;
-            stroke-width: 8;
-            stroke-linecap: round;
-            transition: stroke-dasharray 0.5s ease;
-        }
-
-        .progress-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-        }
-
-        .progress-percentage {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #1f2937;
-        }
-
-        .progress-icon {
-            width: 24px;
-            height: 24px;
-            color: #3b82f6;
-            margin-top: 5px;
-        }
-
-        .consumption-display {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .consumption-amount {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #1f2937;
-        }
-
-        .consumption-goal {
-            color: #64748b;
-            margin-bottom: 10px;
-        }
-
-        .motivation-message {
-            color: #2563eb;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 16px;
-        }
-
-        .quick-buttons {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .quick-button {
-            background: linear-gradient(135deg, #3b82f6, #06b6d4);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .quick-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .custom-input-group {
-            display: flex;
-            gap: 12px;
-        }
-
-        .custom-input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .custom-input:focus {
-            border-color: #3b82f6;
-        }
-
-        .add-button {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .add-button:hover {
-            transform: translateY(-2px);
-        }
-
-        .add-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .goal-input-group {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .goal-input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .goal-input:focus {
-            border-color: #3b82f6;
-        }
-
-        .unit-label {
-            color: #64748b;
-            font-weight: 500;
-        }
-
-        .recommendation {
-            color: #64748b;
-            font-size: 0.9rem;
-            margin-top: 8px;
-        }
-
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 8px;
-        }
-
-        .history-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .history-amount {
-            font-weight: 600;
-            color: #1f2937;
-        }
-
-        .history-time {
-            color: #64748b;
-        }
-
-        .remove-button {
-            color: #dc2626;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-            transition: background-color 0.2s;
-        }
-
-        .remove-button:hover {
-            background: #fef2f2;
-        }
-
-        .tip {
-            background: #dbeafe;
-            color: #1d4ed8;
-            padding: 16px;
-            border-radius: 12px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .icon {
-            width: 20px;
-            height: 20px;
-            display: inline-block;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>
-                <span class="icon">💧</span>
-                Hidrate-se
-            </h1>
-            <p>Controle seu consumo diário de água</p>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 p-4">
+      <div className="max-w-md mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <Droplets className="w-12 h-12 text-blue-500 mr-2" />
+            <h1 className="text-3xl font-bold text-gray-800">Hidrate-se</h1>
+          </div>
+          <p className="text-gray-600">Controle seu consumo diário de água</p>
         </div>
 
-        <!-- Progresso Principal -->
-        <div class="card">
-            <div class="progress-circle">
-                <svg class="progress-ring" width="160" height="160">
-                    <circle class="progress-ring-bg" cx="80" cy="80" r="70"></circle>
-                    <circle class="progress-ring-fill" cx="80" cy="80" r="70" id="progressCircle"></circle>
-                </svg>
-                <div class="progress-center">
-                    <div class="progress-percentage" id="progressPercentage">0%</div>
-                    <div class="icon progress-icon">💧</div>
+        {/* Progresso Principal */}
+        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6">
+          <div className="text-center mb-6">
+            <div className="relative w-40 h-40 mx-auto mb-4">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="#E5E7EB"
+                  strokeWidth="8"
+                  fill="none"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="#3B82F6"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${progressPercentage * 2.83} 283`}
+                  className="transition-all duration-500 ease-out"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold text-gray-800">
+                  {Math.round(progressPercentage)}%
+                </span>
+                <Droplets className="w-6 h-6 text-blue-500 mt-1" />
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-3xl font-bold text-gray-800 mb-1">
+                {consumed}ml
+              </p>
+              <p className="text-gray-600">de {dailyGoal}ml</p>
+              <p className="text-sm text-blue-600 mt-2 font-medium">
+                {getMotivationalMessage()}
+              </p>
+            </div>
+          </div>
+
+          {/* Streak - apenas mostra se maior que 0 */}
+          {streak > 0 && (
+            <div className="bg-gradient-to-r from-orange-100 to-yellow-100 rounded-xl p-3 mb-4">
+              <div className="flex items-center justify-center">
+                <Award className="w-5 h-5 text-orange-500 mr-2" />
+                <span className="text-orange-700 font-medium">
+                  {streak} dia{streak > 1 ? 's' : ''} consecutivo{streak > 1 ? 's' : ''}!
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Adicionar Água */}
+        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <Plus className="w-5 h-5 mr-2 text-blue-500" />
+            Adicionar Água
+          </h3>
+          
+          {/* Botões Rápidos */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {[200, 250, 300, 400, 500, 600].map(amount => (
+              <button
+                key={amount}
+                onClick={() => addWater(amount)}
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 px-4 rounded-xl font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                {amount}ml
+              </button>
+            ))}
+          </div>
+
+          {/* Quantidade Personalizada */}
+          <div className="flex gap-3">
+            <input
+              type="number"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              placeholder="Quantidade personalizada"
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            />
+            <button
+              onClick={() => customAmount && addWater(parseInt(customAmount))}
+              disabled={!customAmount || parseInt(customAmount) <= 0}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-xl font-medium hover:from-green-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Configurar Meta */}
+        <div className="bg-white rounded-3xl p-6 shadow-xl mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <Target className="w-5 h-5 mr-2 text-blue-500" />
+            Meta Diária
+          </h3>
+          <div className="flex gap-3">
+            <input
+              type="number"
+              value={dailyGoal}
+              onChange={(e) => setDailyGoal(parseInt(e.target.value) || 2000)}
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            />
+            <span className="flex items-center text-gray-600 font-medium">ml</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">
+            Recomendação: 2000-3000ml por dia
+          </p>
+        </div>
+
+        {/* Histórico do Dia */}
+        {entries.length > 0 && (
+          <div className="bg-white rounded-3xl p-6 shadow-xl mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-blue-500" />
+              Histórico de Hoje
+            </h3>
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              {entries.slice().reverse().map(entry => (
+                <div key={entry.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center">
+                    <Droplets className="w-4 h-4 text-blue-500 mr-3" />
+                    <span className="font-medium">{entry.amount}ml</span>
+                    <span className="text-gray-500 ml-2">{entry.time}</span>
+                  </div>
+                  <button
+                    onClick={() => removeEntry(entry.id)}
+                    className="text-red-500 hover:text-red-700 transition-colors duration-200 px-2 py-1 rounded-lg hover:bg-red-50 text-xl"
+                  >
+                    ×
+                  </button>
                 </div>
+              ))}
             </div>
-            
-            <div class="consumption-display">
-                <div class="consumption-amount" id="consumedAmount">0ml</div>
-                <div class="consumption-goal">de <span id="goalDisplay">2000</span>ml</div>
-                <div class="motivation-message" id="motivationMessage">💧 Hora de se hidratar! Comece agora!</div>
-            </div>
-        </div>
+          </div>
+        )}
 
-        <!-- Adicionar Água -->
-        <div class="card">
-            <div class="section-title">
-                <span class="icon">➕</span>
-                Adicionar Água
-            </div>
-            
-            <div class="quick-buttons">
-                <button class="quick-button" onclick="addWater(200)">200ml</button>
-                <button class="quick-button" onclick="addWater(250)">250ml</button>
-                <button class="quick-button" onclick="addWater(300)">300ml</button>
-                <button class="quick-button" onclick="addWater(400)">400ml</button>
-                <button class="quick-button" onclick="addWater(500)">500ml</button>
-                <button class="quick-button" onclick="addWater(600)">600ml</button>
-            </div>
-
-            <div class="custom-input-group">
-                <input 
-                    type="number" 
-                    class="custom-input" 
-                    placeholder="Quantidade personalizada"
-                    id="customAmount"
-                >
-                <button class="add-button" onclick="addCustomWater()">➕</button>
-            </div>
-        </div>
-
-        <!-- Configurar Meta -->
-        <div class="card">
-            <div class="section-title">
-                <span class="icon">🎯</span>
-                Meta Diária
-            </div>
-            
-            <div class="goal-input-group">
-                <input 
-                    type="number" 
-                    class="goal-input" 
-                    value="2000"
-                    id="goalInput"
-                    onchange="updateGoal()"
-                >
-                <span class="unit-label">ml</span>
-            </div>
-            <div class="recommendation">
-                Recomendação: 2000-3000ml por dia
-            </div>
-        </div>
-
-        <!-- Histórico -->
-        <div class="card" id="historyCard">
-            <div class="section-title">
-                <span class="icon">📅</span>
-                Histórico de Hoje
-            </div>
-            <div id="historyList"></div>
-        </div>
-
-        <!-- Dica -->
-        <div class="tip">
+        {/* Dica adicional */}
+        <div className="bg-blue-50 rounded-xl p-4 text-center">
+          <p className="text-blue-700 text-sm">
             💡 Dica: Beba água regularmente ao longo do dia para manter uma boa hidratação!
+          </p>
         </div>
+      </div>
     </div>
+  );
+};
 
-    <script>
-        let consumed = 0;
-        let dailyGoal = 2000;
-        let entries = [];
-
-        function updateDisplay() {
-            const progressPercentage = Math.min((consumed / dailyGoal) * 100, 100);
-            const circumference = 2 * Math.PI * 70;
-            const strokeDasharray = (progressPercentage / 100) * circumference;
-            
-            document.getElementById('progressPercentage').textContent = Math.round(progressPercentage) + '%';
-            document.getElementById('consumedAmount').textContent = consumed + 'ml';
-            document.getElementById('goalDisplay').textContent = dailyGoal;
-            document.getElementById('progressCircle').style.strokeDasharray = strokeDasharray + ' ' + circumference;
-            
-            // Mensagem motivacional
-            let message;
-            if (consumed >= dailyGoal) {
-                message = "🎉 Parabéns! Meta diária alcançada!";
-            } else if (progressPercentage >= 75) {
-                message = "🌟 Quase lá! Falta pouco para sua meta!";
-            } else if (progressPercentage >= 50) {
-                message = "💪 Você está no meio do caminho!";
-            } else if (progressPercentage >= 25) {
-                message = "🚀 Bom começo! Continue assim!";
-            } else {
-                message = "💧 Hora de se hidratar! Comece agora!";
-            }
-            document.getElementById('motivationMessage').textContent = message;
-            
-            updateHistory();
-        }
-
-        function addWater(amount) {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('pt-BR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-            
-            consumed += amount;
-            entries.push({ 
-                amount: amount, 
-                time: timeString, 
-                id: Date.now() 
-            });
-            
-            updateDisplay();
-        }
-
-        function addCustomWater() {
-            const input = document.getElementById('customAmount');
-            const amount = parseInt(input.value);
-            
-            if (amount && amount > 0) {
-                addWater(amount);
-                input.value = '';
-            }
-        }
-
-        function removeEntry(id) {
-            const entryIndex = entries.findIndex(e => e.id === id);
-            if (entryIndex !== -1) {
-                consumed -= entries[entryIndex].amount;
-                entries.splice(entryIndex, 1);
-                updateDisplay();
-            }
-        }
-
-        function updateGoal() {
-            const goalInput = document.getElementById('goalInput');
-            dailyGoal = parseInt(goalInput.value) || 2000;
-            updateDisplay();
-        }
-
-        function updateHistory() {
-            const historyList = document.getElementById('historyList');
-            const historyCard = document.getElementById('historyCard');
-            
-            if (entries.length === 0) {
-                historyCard.style.display = 'none';
-                return;
-            }
-            
-            historyCard.style.display = 'block';
-            historyList.innerHTML = '';
-            
-            // Mostrar entradas em ordem reversa (mais recentes primeiro)
-            entries.slice().reverse().forEach(entry => {
-                const historyItem = document.createElement('div');
-                historyItem.className = 'history-item';
-                historyItem.innerHTML = `
-                    <div class="history-info">
-                        <span class="icon">💧</span>
-                        <span class="history-amount">${entry.amount}ml</span>
-                        <span class="history-time">${entry.time}</span>
-                    </div>
-                    <button class="remove-button" onclick="removeEntry(${entry.id})">×</button>
-                `;
-                historyList.appendChild(historyItem);
-            });
-        }
-
-        // Enter key support for custom amount
-        document.getElementById('customAmount').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addCustomWater();
-            }
-        });
-
-        // Inicializar display
-        updateDisplay();
-    </script>
-</body>
-</html>
+export default WaterTrackerApp;
